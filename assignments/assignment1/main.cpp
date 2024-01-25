@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <iostream>
 
 #include <ew/external/glad.h>
 #include <ew/camera.h>
@@ -29,6 +30,25 @@ ew::CameraController cameraController;
 
 ew::Camera camera;
 
+//created framebuffer
+unsigned int fbo;
+unsigned int colorBuffer;
+
+float quad[] =
+{
+	//triangle 1
+	-1.0f, 1.0f, 0.0f, 1.0f,
+	-1.0f, -1.0f, 0.0f, 0.0f,
+	1.0f, -1.0f, 1.0f, 1.0f,
+
+	//triangle 2
+	-1.0f, 1.0f, 0.0f, 1.0f,
+	1.0f, -1.0f, 1.0f, 0.0f,
+	1.0f, 1.0f, 1.0f, 1.0f
+};
+
+unsigned int screenVAO, screenVBO;
+
 struct Material
 {
 	float Ka = 1.0;
@@ -46,6 +66,7 @@ int main() {
 
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
+	ew::Shader postProcessShader = ew::Shader("assets/post.vert", "assets/post.frag");
 	ew::Transform monkeyTransform;
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
@@ -57,12 +78,55 @@ int main() {
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
 
+	//create vao
+	//create vbo
+	glGenVertexArrays(1, &screenVAO);
+	glGenBuffers(1, &screenVBO);
+
+	glBindVertexArray(screenVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
+
+	//send in quad data
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), &quad, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	glBindVertexArray(0);
+
+	//Create frame buffers
+
+	glCreateFramebuffers(1, &fbo); //create the frame buffer
+
+	glGenTextures(1, &colorBuffer); //create the texture
+
+	glBindTexture(GL_TEXTURE_2D, colorBuffer); //binding the texture
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	//glTextureStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, screenWidth, screenHeight); //reserve memory for texture
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0); //attaching the color buffer to the frame buffer
+
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		 //error with the framebuffer
+		std::cout << "framebuffer not working" << std::endl;
+	}
+
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
+
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo); //bind the frame buffer
 
 		//RENDER
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
@@ -88,7 +152,25 @@ int main() {
 		shader.setFloat("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
 
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //TODO: Remove. Used to verify quad position
+
 		monkeyModel.draw();
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		postProcessShader.use();
+
+		//draw full screen quad
+		glDisable(GL_DEPTH_TEST);
+		glBindVertexArray(screenVAO);
+		glBindTexture(GL_TEXTURE_2D, colorBuffer);
+		
+		//postProcessShader.setFloat("screenTexture", 0);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		drawUI();
 
