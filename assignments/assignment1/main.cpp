@@ -39,12 +39,12 @@ float quad[] =
 	//triangle 1
 	-1.0f, 1.0f, 0.0f, 1.0f,
 	-1.0f, -1.0f, 0.0f, 0.0f,
-	1.0f, -1.0f, 1.0f, 1.0f,
+	1.0f, 1.0f, 1.0f, 1.0f,
 
 	//triangle 2
-	-1.0f, 1.0f, 0.0f, 1.0f,
 	1.0f, -1.0f, 1.0f, 0.0f,
-	1.0f, 1.0f, 1.0f, 1.0f
+	1.0f, 1.0f, 1.0f, 1.0f,
+	-1.0f, -1.0f, 0.0f, 0.0f
 };
 
 unsigned int screenVAO, screenVBO;
@@ -114,6 +114,14 @@ int main() {
 
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0); //attaching the color buffer to the frame buffer
 
+	unsigned int rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, screenWidth, screenHeight);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+	//Bind RBO to FBO
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
