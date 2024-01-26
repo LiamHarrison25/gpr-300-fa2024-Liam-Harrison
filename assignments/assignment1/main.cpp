@@ -78,8 +78,7 @@ int main() {
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
 
-	//create vao
-	//create vbo
+	//setting up the quad
 	glGenVertexArrays(1, &screenVAO);
 	glGenBuffers(1, &screenVBO);
 
@@ -99,11 +98,14 @@ int main() {
 
 	glCreateFramebuffers(1, &fbo); //create the frame buffer
 
+	//ADDED:
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo); 
+
+	//generate texture
+
 	glGenTextures(1, &colorBuffer); //create the texture
-
 	glBindTexture(GL_TEXTURE_2D, colorBuffer); //binding the texture
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screenWidth, screenHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
 
 	//glTextureStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, screenWidth, screenHeight); //reserve memory for texture
 
@@ -116,8 +118,10 @@ int main() {
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
 		 //error with the framebuffer
-		std::cout << "framebuffer not working" << std::endl;
+		std::cout << "framebuffer is not complete" << std::endl;
 	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -131,10 +135,13 @@ int main() {
 		//RENDER
 		glClearColor(0.6f,0.8f,0.92f,1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//added
+		glEnable(GL_DEPTH_TEST);
 
-		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+		//rotation
 
 		cameraController.move(window, &camera, deltaTime);
+		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, chipTexture);
