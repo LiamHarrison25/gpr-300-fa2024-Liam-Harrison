@@ -62,6 +62,7 @@ float exposure = 1.0f;
 
 bool enableGammaCorrection;
 bool enableHDR;
+bool enableBoxBlur;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
@@ -74,6 +75,7 @@ int main() {
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
 	ew::Shader postProcessShader = ew::Shader("assets/post.vert", "assets/post.frag");
 	ew::Transform monkeyTransform;
+	ew::Shader boxBlurShader = ew::Shader("assets/boxBlur.vert", "assets/boxBlur.frag");
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -211,6 +213,13 @@ int main() {
 
 		postProcessShader.use();
 
+		if(enableBoxBlur)
+		{
+			boxBlurShader.use();
+			boxBlurShader.setInt("screenTexture", 0);
+			monkeyModel.draw();
+		}
+
 		if(enableHDR)
 		{
 
@@ -258,15 +267,13 @@ void drawUI() {
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
 	}
 
-	if (ImGui::Checkbox("Gamma Correction", &enableGammaCorrection))
-	{
-		
-	}
+	if (ImGui::Checkbox("Gamma Correction", &enableGammaCorrection));
 
-	if(ImGui::Checkbox("HDR", &enableHDR))
-	{
-		
-	}
+	if (ImGui::Checkbox("BoxBlur", &enableBoxBlur));
+
+	if (ImGui::Checkbox("HDR", &enableHDR));
+
+	
 
 	ImGui::End();
 
