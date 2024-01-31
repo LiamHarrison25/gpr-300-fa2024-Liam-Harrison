@@ -57,6 +57,8 @@ struct Material
 	float Shininess = 128;
 }material;
 
+bool enableGammaCorrection;
+
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
@@ -154,6 +156,8 @@ int main() {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, chipTexture);
 
+		
+
 		shader.use();
 
 		shader.setInt("_MainTex", 0);
@@ -167,13 +171,21 @@ int main() {
 		shader.setFloat("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
 
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); //TODO: Remove. Used to verify quad position
-
 		monkeyModel.draw();
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		if (enableGammaCorrection)
+		{
+			glEnable(GL_FRAMEBUFFER_SRGB);
+			
+		}
+		else
+		{
+			glDisable(GL_FRAMEBUFFER_SRGB);
+		}
 
 		postProcessShader.use();
 
@@ -201,6 +213,11 @@ void drawUI() {
 
 	ImGui::Begin("Settings");
 
+	if (ImGui::Button("Reset Camera"))
+	{
+		resetCamera(&camera, &cameraController);
+	}
+
 	if (ImGui::CollapsingHeader("Material"))
 	{
 		ImGui::SliderFloat("AmbientK", &material.Ka, 0.0f, 1.0f);
@@ -209,12 +226,11 @@ void drawUI() {
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
 	}
 
-	if (ImGui::Button("Reset Camera"))
+	if (ImGui::Checkbox("Gamma Correction", &enableGammaCorrection))
 	{
-		resetCamera(&camera, &cameraController);
+		
 	}
 
-	ImGui::Text("Add Controls Here!");
 	ImGui::End();
 
 	ImGui::Render();
