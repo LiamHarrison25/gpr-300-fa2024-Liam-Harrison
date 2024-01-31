@@ -33,6 +33,7 @@ ew::Camera camera;
 //created framebuffer
 unsigned int fbo;
 unsigned int colorBuffer;
+unsigned int hdrFbo;
 
 float quad[] =
 {
@@ -57,7 +58,10 @@ struct Material
 	float Shininess = 128;
 }material;
 
+float exposure = 1.0f;
+
 bool enableGammaCorrection;
+bool enableHDR;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
@@ -98,32 +102,44 @@ int main() {
 
 	//Create frame buffers
 
-	glCreateFramebuffers(1, &fbo); //create the frame buffer
+	
+		glCreateFramebuffers(1, &fbo); //create the frame buffer
+		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
-	//ADDED:
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo); 
+		//generate texture
 
-	//generate texture
+		glGenTextures(1, &colorBuffer); //create the texture
+		glBindTexture(GL_TEXTURE_2D, colorBuffer); //binding the texture
 
-	glGenTextures(1, &colorBuffer); //create the texture
-	glBindTexture(GL_TEXTURE_2D, colorBuffer); //binding the texture
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+		if(enableHDR)
+		{
+			glGenFramebuffers(1, &hdrFbo);
 
-	//glTextureStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, screenWidth, screenHeight); //reserve memory for texture
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, screenWidth, screenHeight, 0, GL_RGBA16F, GL_FLOAT, NULL);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glBindFramebuffer(GL_FRAMEBUFFER, hdrFbo);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		}
+		else
+		{
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, screenWidth, screenHeight, 0, GL_RGB, GL_UNSIGNED_INT, NULL);
+		}
 
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0); //attaching the color buffer to the frame buffer
+		//glTextureStorage2D(GL_TEXTURE_2D, 1, GL_RGBA8, screenWidth, screenHeight); //reserve memory for texture
 
-	unsigned int rbo;
-	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, screenWidth, screenHeight);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	//Bind RBO to FBO
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorBuffer, 0); //attaching the color buffer to the frame buffer
+
+		unsigned int rbo;
+		glGenRenderbuffers(1, &rbo);
+		glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+		glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, screenWidth, screenHeight);
+		glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+		//Bind RBO to FBO
+		glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
@@ -156,6 +172,12 @@ int main() {
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, chipTexture);
 
+		if(enableHDR)
+		{
+			glBindFramebuffer(GL_FRAMEBUFFER, hdrFbo);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		}
 		
 
 		shader.use();
@@ -188,6 +210,16 @@ int main() {
 		}
 
 		postProcessShader.use();
+
+		if(enableHDR)
+		{
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, colorBuffer);
+			postProcessShader.setInt("hdr", enableHDR);
+			postProcessShader.setFloat("exposure", exposure);
+
+		}
 
 		//draw full screen quad
 		glDisable(GL_DEPTH_TEST);
@@ -227,6 +259,11 @@ void drawUI() {
 	}
 
 	if (ImGui::Checkbox("Gamma Correction", &enableGammaCorrection))
+	{
+		
+	}
+
+	if(ImGui::Checkbox("HDR", &enableHDR))
 	{
 		
 	}
