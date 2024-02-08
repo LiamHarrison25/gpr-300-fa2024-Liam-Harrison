@@ -45,7 +45,6 @@ float calcShadow(sampler2D shadowMap, vec4 lightSpacePos)
 void main()
 {
 	float shadow = calcShadow(_shadowMap, fs_in.LightSpacePos);
-
 	vec3 normal = normalize(fs_in.WorldNormal);
 	vec3 toLight = -_LightDirection;
 	float diffuseFactor = max(dot(normal, toLight), 0.0);
@@ -56,9 +55,12 @@ void main()
 
 	vec3 lightColor = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
 
-	//vec3 diffuseColor = _LightColor * diffuseFactor;
+	vec3 diffuseColor = _LightColor * diffuseFactor;
 	lightColor += (_AmbientColor * _Material.Ka) * (1.0 - shadow);
 	vec3 objectColor = texture(_MainTex, fs_in.TexCoord).rgb;
-	FragColor = vec4(objectColor * lightColor, 1.0);
+
+	vec3 lighting = (_AmbientColor + (1.0 - shadow) * (diffuseColor + specularFactor) * objectColor);
+
+	FragColor = vec4(lighting * lightColor, 1.0);
 
 }
