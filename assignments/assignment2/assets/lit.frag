@@ -3,12 +3,12 @@
 out vec4 FragColor;
 in Surface
 {
+	vec4 LightSpacePos; 
 	vec3 WorldPos;
 	vec3 WorldNormal;
 	vec2 TexCoord;
 }fs_in;
 
-in vec4 LightSpacePos;
 
 uniform sampler2D _shadowMap;
 
@@ -44,7 +44,7 @@ float calcShadow(sampler2D shadowMap, vec4 lightSpacePos)
 
 void main()
 {
-	float shadow = calcShadow(_shadowMap, LightSpacePos);
+	float shadow = calcShadow(_shadowMap, fs_in.LightSpacePos);
 
 	vec3 normal = normalize(fs_in.WorldNormal);
 	vec3 toLight = -_LightDirection;

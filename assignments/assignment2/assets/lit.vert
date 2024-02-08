@@ -10,18 +10,18 @@ uniform mat4 _ViewProjection;
 
 out Surface
 {
+	vec4 LightSpacePos;
 	vec3 WorldPos;
 	vec3 WorldNormal;
 	vec2 TexCoord;
 }vs_out;
 
-out vec4 LightSpacePos;
 
 void main()
 {
 	vs_out.WorldPos = vec3(_Model * vec4(vPos,1.0));
 	vs_out.WorldNormal = transpose(inverse(mat3(_Model))) * vNormal;
 	vs_out.TexCoord = vTexCoord;
-	LightSpacePos = _ViewProjection * _Model * vec4(vPos, 1);
+	vs_out.LightSpacePos = _ViewProjection * _Model * vec4(vPos, 1);
 	gl_Position = _ViewProjection * _Model * vec4(vPos,1.0);
 }
