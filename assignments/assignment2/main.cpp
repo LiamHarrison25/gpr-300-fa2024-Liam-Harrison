@@ -50,6 +50,19 @@ float quad[] =
 	-1.0f, -1.0f, 0.0f, 0.0f
 };
 
+float planeVertices[] =
+{
+	// positions            // normals         // texcoords
+		-25.0f, -1.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+		-25.0f, -1.5f,  25.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+		 25.0f, -1.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+
+		 25.0f, -1.5f, -25.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f,
+		-25.0f, -1.5f, -25.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+		 25.0f, -1.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f
+};
+
+unsigned int planeVAO, planeVBO;
 unsigned int screenVAO, screenVBO;
 
 struct Material
@@ -68,6 +81,8 @@ static void create_debug_pass()
 	//glBindFramebuffer(1, );
 
 }
+
+unsigned int depthMap;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
@@ -107,8 +122,28 @@ int main() {
 
 	//glBindVertexArray(0);
 
-	////Create frame buffers
 
+	//Create Plane VAO
+	//-------------------------------------------------------------
+
+	//Set up  the quad
+	glGenVertexArrays(1, &planeVAO);
+	glGenBuffers(1, &planeVBO);
+
+	glBindVertexArray(planeVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, planeVBO);
+
+	//send in quad data
+	glBufferData(GL_ARRAY_BUFFER, sizeof(planeVertices), planeVertices, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+
+	glBindVertexArray(0);//Reset to default
+	//-------------------------------------------------------------
 	
 
    // configure depth map FBO
@@ -118,7 +153,7 @@ int main() {
     glGenFramebuffers(1, &depthMapFBO);
 
     // create depth texture
-    unsigned int depthMap;
+
     glGenTextures(1, &depthMap);
     glBindTexture(GL_TEXTURE_2D, depthMap);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
@@ -132,7 +167,7 @@ int main() {
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
     glDrawBuffer(GL_NONE);
     glReadBuffer(GL_NONE);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    //glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	/*unsigned int rbo;
 	glGenRenderbuffers(1, &rbo);
@@ -159,7 +194,7 @@ int main() {
 		prevFrameTime = time;
 
 		//Lighting variables
-		float near_plane = 1.0f, far_plane = 7.5f;
+		float near_plane = 0.0f, far_plane = 100.5f;
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 
 		glm::mat4 lightView = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f),
@@ -170,106 +205,89 @@ int main() {
 
 		cameraController.move(window, &camera, deltaTime);
 
+		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+
+		// RENDER SHADOW MAP:
+		//----------------------------------------------------
+
 		// reset viewport because the debug quad needed a new viewport
-		glViewport(0, 0, screenWidth, screenHeight);
+		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 
 
 		// RENDER FROM POV OF LIGHT TO DEPTH BUFFER
-		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFbo);
-		glClear(GL_DEPTH_BUFFER_BIT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO); //Bind FBO
+		glClear(GL_DEPTH_BUFFER_BIT); //Clear
 
+		glEnable(GL_DEPTH_TEST); //Pipeline
+
+
+		//Shader Uniforms
 		shadowShader.use();
 		shadowShader.setMat4("_Model", monkeyTransform.modelMatrix());
 		shadowShader.setMat4("_ViewProjection", lightSpaceMatrix);
-		monkeyModel.draw();
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		monkeyModel.draw(); //Draw
+		glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind FBO
 		///////////////////////////////////////////
 
+     	// RENDER the scene FROM POV OF OF CAMERA USING LIT
+		//---------------------------------------------------
 
-     	// RENDER FROM POV OF OF CAMERA USING LIT
-		glClearColor(0.6f,0.8f,0.92f,1.0f);
+		//Reset Viewport
+		glViewport(0, 0, screenWidth, screenHeight);
+
+		//Clear
+		glClearColor(0.6f,0.8f,0.92f,1.0f); 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		shader.use();
 
+		//Bind
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, chipTexture);
 
-		shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		//Uniforms
+		shader.use();
+		shader.setInt("_MainTex", 0);
 		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		shader.setVec3("_EyePos", camera.position);
-		monkeyModel.draw();
+		shader.setFloat("_Material.Ka", material.Ka);
+		shader.setFloat("_Material.Kd", material.Kd);
+		shader.setFloat("_Material.Ks", material.Ks);
+		shader.setFloat("_Material.Shininess", material.Shininess);
+		shader.setMat4("_Model", monkeyTransform.modelMatrix());
+
+		monkeyModel.draw(); //Draw
+
+
+		//Render Plane:
+		//-----------------
+
+		//change the texture
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, brickTexture);
+
+		//render the plane
+		glm::mat4 planeModel = glm::mat4(1.0f);
+		shader.setMat4("_Model", planeModel);
+		glBindVertexArray(planeVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+		//-----------------
+
+
 		///////////////////////////////////////////
 
-  //   	// RENDER DEBUG QUAD USING DEPTH BUFFER
-		//glViewport(screenWidth - 150, 0, 150, 150);
+     	// RENDER DEBUG QUAD USING DEPTH BUFFER
+		//---------------------------------------------------
 
-		//glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glViewport(screenWidth - 150, 0, 150, 150); 
 
 		//debugShader.use();
+		//debugShader.setInt("DebugImage", 0);
 
 		//glActiveTexture(GL_TEXTURE0);
 		//glBindTexture(GL_TEXTURE_2D, depthMap);
-		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 6);
+		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 		/////////////////////////////////////////////
-
-		//glClear(GL_DEPTH_BUFFER_BIT);
-		//glBindFramebuffer(GL_FRAMEBUFFER, depthMapFbo);
-
-		//shadowShader.use();
-		//shadowShader.setMat4("lightSpaceMatrix", lightSpaceMatrix); //from learn openGl
-		//
-		//glActiveTexture(GL_TEXTURE0);
-		//glBindTexture(GL_TEXTURE_2D, chipTexture);
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-		//glViewport(0, 0, screenWidth, screenHeight);
-
-		////debug pipeline:
-
-		////glClearColor()
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		//debugShader.use();
-		//debugShader.setVec3("vPos", screenWidth - 150, screenHeight - 150, 0);
-		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 0);
-
-		/*glClearColor(0.6f,0.8f,0.92f,1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
-
-		
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, chipTexture);
-
-		shadowShader.use();
-
-		shadowShader.setInt("_MainTex", 0);
-
-		shadowShader.setMat4("_Model", monkeyTransform.modelMatrix());
-		shadowShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
-		shadowShader.setVec3("_EyePos", camera.position);
-
-		shadowShader.setFloat("_Material.Ka", material.Ka);
-		shadowShader.setFloat("_Material.Kd", material.Kd);
-		shadowShader.setFloat("_Material.Ks", material.Ks);
-		shadowShader.setFloat("_Material.Shininess", material.Shininess);
-
-		monkeyModel.draw();*/
-
-		//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
-		//glClear(GL_DEPTH_BUFFER_BIT);
-
-		////draw full screen quad
-		//glDisable(GL_DEPTH_TEST);
-		//glBindVertexArray(screenVAO);
-		////glBindTexture(GL_TEXTURE_2D, colorBuffer);
-
-		//glDrawArrays(GL_TRIANGLES, 0, 6);
 
 		drawUI();
 		glfwSwapBuffers(window);
@@ -299,6 +317,18 @@ void drawUI() {
 
 	ImGui::Text("Add Controls Here!");
 	ImGui::End();
+
+	ImGui::Begin("Shadow Map");
+	//Using a Child allow to fill all the space of the window.
+	ImGui::BeginChild("Shadow Map");
+	//Stretch image to be window size
+	ImVec2 windowSize = ImGui::GetWindowSize();
+	//Invert 0-1 V to flip vertically for ImGui display
+	//shadowMap is the texture2D handle
+	ImGui::Image((ImTextureID)depthMap, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	ImGui::EndChild();
+	ImGui::End();
+
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

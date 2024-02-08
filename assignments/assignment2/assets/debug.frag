@@ -1,9 +1,12 @@
 #version 450
 
-in vec3 uv;
+in vec2 uv;
 out vec4 FragColor;
+
+uniform sampler2D debugImage;
 
 void main()
 {
-	FragColor = vec4(uv, 1.0);
+	float depth = texture(debugImage, uv).r;
+	FragColor = vec4(vec3(depth), 1.0);
 }
