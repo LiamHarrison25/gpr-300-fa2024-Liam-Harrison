@@ -253,6 +253,7 @@ int main() {
 		shader.setFloat("_Material.Kd", material.Kd);
 		shader.setFloat("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
+		shader.setFloat("_ShadowMap", depthMap);
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
 
 		monkeyModel.draw(); //Draw
