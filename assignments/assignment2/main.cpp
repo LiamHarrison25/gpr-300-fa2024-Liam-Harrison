@@ -102,6 +102,8 @@ int main() {
 	camera.aspectRatio = (float)screenWidth / screenHeight;
 	camera.fov = 60.0f;
 
+	glm::vec3 lightPos = glm::vec3(-2.0f, 4.0f, -1.0f);
+
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glEnable(GL_DEPTH_TEST);
@@ -197,7 +199,7 @@ int main() {
 		float near_plane = 0.0f, far_plane = 100.5f;
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 
-		glm::mat4 lightView = glm::lookAt(glm::vec3(-2.0f, 4.0f, -1.0f),
+		glm::mat4 lightView = glm::lookAt(lightPos,
 			glm::vec3(0.0f, 0.0f, 0.0f),
 			glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -254,6 +256,7 @@ int main() {
 		shader.setFloat("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
 		shader.setFloat("_ShadowMap", depthMap);
+		shader.setVec3("_lightPos", lightPos);
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
 
 		monkeyModel.draw(); //Draw
