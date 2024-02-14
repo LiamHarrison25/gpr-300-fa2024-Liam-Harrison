@@ -83,6 +83,7 @@ static void create_debug_pass()
 }
 
 unsigned int depthMap;
+float lightDirectionX, lightDirectionY, lightDirectionZ;
 
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
@@ -103,6 +104,7 @@ int main() {
 	camera.fov = 60.0f;
 
 	glm::vec3 lightPos = glm::vec3(-2.0f, 4.0f, -1.0f);
+	
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -199,8 +201,9 @@ int main() {
 		float near_plane = 0.0f, far_plane = 100.5f;
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 
+
 		glm::mat4 lightView = glm::lookAt(lightPos,
-			glm::vec3(0.0f, 0.0f, 0.0f),
+			glm::vec3(lightDirectionX, lightDirectionY, lightDirectionZ),
 			glm::vec3(0.0f, 1.0f, 0.0f));
 
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
@@ -319,6 +322,15 @@ void drawUI() {
 		ImGui::SliderFloat("DiffuseK", &material.Kd, 0.0f, 1.0f);
 		ImGui::SliderFloat("SpecularK", &material.Ks, 0.0f, 1.0f);
 		ImGui::SliderFloat("Shininess", &material.Shininess, 2.0f, 1024.0f);
+	}
+
+	if(ImGui::CollapsingHeader("Lighting Direction"))
+	{
+		ImGui::DragFloat("x", &lightDirectionX, 0, -1, 1);
+		ImGui::DragFloat("y", &lightDirectionY, 0, -1, 1);
+		ImGui::DragFloat("z", &lightDirectionZ, 0, -1, 1);
+		ImGui::SliderFloat3("x", &lightDirectionX, -1, 1);
+	
 	}
 
 	if (ImGui::Button("Reset Camera"))
