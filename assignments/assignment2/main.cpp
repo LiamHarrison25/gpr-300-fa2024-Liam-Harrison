@@ -197,6 +197,10 @@ int main() {
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 
+		//Clear
+		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		//Lighting variables
 		float near_plane = 0.0f, far_plane = 100.5f;
 		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
@@ -222,6 +226,7 @@ int main() {
 		// RENDER FROM POV OF LIGHT TO DEPTH BUFFER
 		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO); //Bind FBO
 		glClear(GL_DEPTH_BUFFER_BIT); //Clear
+		
 
 		glEnable(GL_DEPTH_TEST); //Pipeline
 
@@ -229,7 +234,9 @@ int main() {
 		//Shader Uniforms
 		shadowShader.use();
 		shadowShader.setMat4("_Model", monkeyTransform.modelMatrix());
-		shadowShader.setMat4("_ViewProjection", lightSpaceMatrix);
+		shadowShader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, brickTexture);
 		monkeyModel.draw(); //Draw
 		glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind FBO
 		///////////////////////////////////////////
@@ -237,13 +244,14 @@ int main() {
      	// RENDER the scene FROM POV OF OF CAMERA USING LIT
 		//---------------------------------------------------
 
+
 		//Reset Viewport
 		glViewport(0, 0, screenWidth, screenHeight);
 
 
 
 		//Clear
-		glClearColor(0.6f,0.8f,0.92f,1.0f); 
+		//glClearColor(0.6f,0.8f,0.92f,1.0f); 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		shader.use();
@@ -259,6 +267,8 @@ int main() {
 		glm::mat4 planeModel = glm::mat4(1.0f);
 		shader.setMat4("_Model", planeModel);
 		glBindVertexArray(planeVAO);
+		/*glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, brickTexture);*/
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 		//-----------------
@@ -277,6 +287,7 @@ int main() {
 		shader.setFloat("_Material.Kd", material.Kd);
 		shader.setFloat("_Material.Ks", material.Ks);
 		shader.setFloat("_Material.Shininess", material.Shininess);
+		shader.setMat4("lightSpaceMatrix", lightSpaceMatrix);
 		shader.setInt("_MainTex", 0);
 		glBindTextureUnit(1, depthMap);
 		shader.setInt("_ShadowMap", 1);

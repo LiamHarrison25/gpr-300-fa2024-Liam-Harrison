@@ -75,8 +75,9 @@ void main()
 	vec3 diffuseColor = _LightColor * diffuseFactor;
 	//lightColor += (_AmbientColor * _Material.Ka);
 	vec3 objectColor = texture(_MainTex, fs_in.TexCoord).rgb;
+	vec3 specular = specularFactor * lightColor;
 
-	vec3 lighting = (_AmbientColor + (1.0 - shadow) * (diffuseColor + specularFactor) * objectColor);
+	vec3 lighting = (_AmbientColor + (1.0 - shadow) * (diffuseColor + specular)) * objectColor;
 
 	FragColor = vec4(lighting, 1.0);
 
