@@ -237,30 +237,13 @@ int main() {
 		//Reset Viewport
 		glViewport(0, 0, screenWidth, screenHeight);
 
+
+
 		//Clear
 		glClearColor(0.6f,0.8f,0.92f,1.0f); 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-		//Bind
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, chipTexture);
-
-		//Uniforms
 		shader.use();
-		shader.setInt("_MainTex", 0);
-		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
-		shader.setVec3("_EyePos", camera.position);
-		shader.setFloat("_Material.Ka", material.Ka);
-		shader.setFloat("_Material.Kd", material.Kd);
-		shader.setFloat("_Material.Ks", material.Ks);
-		shader.setFloat("_Material.Shininess", material.Shininess);
-		shader.setFloat("_ShadowMap", depthMap);
-		shader.setVec3("_lightPos", lightPos);
-		shader.setMat4("_Model", monkeyTransform.modelMatrix());
-
-		monkeyModel.draw(); //Draw
-
 
 		//Render Plane:
 		//-----------------
@@ -276,6 +259,30 @@ int main() {
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 		//-----------------
+
+		//Bind
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, chipTexture);
+
+		//Uniforms
+	
+		shader.setMat4("_Model", monkeyTransform.modelMatrix());
+		
+		shader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		shader.setVec3("_EyePos", camera.position);
+		shader.setFloat("_Material.Ka", material.Ka);
+		shader.setFloat("_Material.Kd", material.Kd);
+		shader.setFloat("_Material.Ks", material.Ks);
+		shader.setFloat("_Material.Shininess", material.Shininess);
+		shader.setInt("_MainTex", 0);
+		glBindTextureUnit(1, depthMap);
+		shader.setInt("_ShadowMap", 1);
+		shader.setVec3("_lightPos", lightPos);	
+
+		monkeyModel.draw(); //Draw
+
+
+		
 
 
 		///////////////////////////////////////////

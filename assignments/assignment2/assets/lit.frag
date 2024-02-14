@@ -42,9 +42,9 @@ float calcShadow(sampler2D shadowMap, vec4 lightSpacePos)
     vec3 lightDir = normalize(_lightPos - fs_in.WorldPos);
     float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
 
-	float shadow = 0.0;
+	float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
 	vec2 texelSize = 1.0 / textureSize(_shadowMap, 0);
-	int x, y; 
+//	int x, y; 
 //	for(x = -1; x <= 1; ++x)
 //	{
 //		for(x = -1; y <= 1; ++y)
@@ -53,8 +53,10 @@ float calcShadow(sampler2D shadowMap, vec4 lightSpacePos)
 //			shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
 //		}
 //	}
+	shadow /= 9.0;
 
-	return step(closestDepth , currentDepth);
+	return shadow;
+	//return step(closestDepth , currentDepth);
 }
 
 void main()
