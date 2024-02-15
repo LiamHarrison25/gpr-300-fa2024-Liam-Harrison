@@ -269,6 +269,7 @@ int main() {
 		glBindVertexArray(planeVAO);
 		/*glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, brickTexture);*/
+
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 		//-----------------
@@ -276,7 +277,7 @@ int main() {
 		//Bind
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, chipTexture);
-
+		 
 		//Uniforms
 	
 		shader.setMat4("_Model", monkeyTransform.modelMatrix());
