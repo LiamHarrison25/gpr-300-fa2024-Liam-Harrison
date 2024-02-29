@@ -41,6 +41,15 @@ struct G_Buffer
 	GLuint depth;
 };
 
+struct PointLight
+{
+	glm::vec3 position;
+	float radius;
+	glm::vec4 color;
+};
+
+const int MAX_POINT_LIGHTS = 64;
+PointLight pointLights[MAX_POINT_LIGHTS];
 
 
 float planeVertices[] =
@@ -216,7 +225,6 @@ int main() {
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader geometryPassShader = ew::Shader("assets/geometryPass.vert", "assets/geometryPass.frag");
 	ew::Shader displayShader = ew::Shader("assets/lightingPass.vert", "assets/lightingPass.frag");
-	//ew::Shader deferredLitShader = ew::Shader("assets/deferredLit.vert", "assets/deferredLit.frag");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
 	ew::Transform monkeyTransform;
 
@@ -323,6 +331,13 @@ int main() {
 		displayShader.setFloat("_Material.Shininess", material.Shininess);
 
 		displayShader.setVec3("_EyePos", camera.position);
+
+		//set shader light uniforms
+		for (i = 0; i < MAX_POINT_LIGHTS; i++)
+		{
+			std::string prefix = "_PointLights[" + std::to_string(i) + "]";
+			displayShader.setVec3(prefix + "color", pointLights[i].color);
+		}
 
 
 		//draws the post processing quad
