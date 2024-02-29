@@ -9,11 +9,13 @@
 #include <ew/cameraController.h>
 #include <ew/texture.h>
 #include <iostream>
+#include <ew/procGen.h>
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
+#include <ew/procGen.h>
 
 void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 GLFWwindow* initWindow(const char* title, int width, int height);
@@ -38,6 +40,22 @@ struct G_Buffer
 	GLuint albeto;
 	GLuint depth;
 };
+
+
+
+float planeVertices[] =
+{
+	// positions            // normals         // texcoords
+		-29.0f, -6.5f, -29.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+		-29.0f, -6.5f,  29.0f,  0.0f, 1.0f, 0.0f,   0.0f,  0.0f,
+		 29.0f, -6.5f,  29.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
+
+		 29.0f, -6.5f, -29.0f,  0.0f, 1.0f, 0.0f,  25.0f, 25.0f,
+		-29.0f, -6.5f, -29.0f,  0.0f, 1.0f, 0.0f,   0.0f, 25.0f,
+		 29.0f, -6.5f,  29.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f
+};
+
+unsigned int planeVAO, planeVBO;
 
 float quad[] =
 {
@@ -64,6 +82,8 @@ struct Material
 	float Ks = 0.5;
 	float Shininess = 128;
 }material;
+
+const int NUM_MONKIES = 64;
 
 
 G_Buffer g_buffer;
@@ -161,6 +181,31 @@ void create_pass()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+void createQuad()
+{
+	
+
+	//-------------------------
+
+	//setting up the quad
+	glGenVertexArrays(1, &screenVAO);
+	glGenBuffers(1, &screenVBO);
+
+	glBindVertexArray(screenVAO);
+	glBindBuffer(GL_ARRAY_BUFFER, screenVBO);
+
+	//send in quad data
+	glBufferData(GL_ARRAY_BUFFER, sizeof(quad), &quad, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+	glBindVertexArray(0);
+
+	//-------------------------
+}
+
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
@@ -170,9 +215,14 @@ int main() {
 
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader geometryPassShader = ew::Shader("assets/geometryPass.vert", "assets/geometryPass.frag");
+	ew::Shader displayShader = ew::Shader("assets/lightingPass.vert", "assets/lightingPass.frag");
 	//ew::Shader deferredLitShader = ew::Shader("assets/deferredLit.vert", "assets/deferredLit.frag");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
 	ew::Transform monkeyTransform;
+
+	ew::Mesh plane = ew::createPlane(1024, 1024, 1028);
+	ew::Transform planeTransform;
+	planeTransform.position.y = -8.0;
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -184,50 +234,106 @@ int main() {
 	glEnable(GL_DEPTH_TEST);
 
 	create_pass();
+	createQuad();
 
-	
+	ew::Transform monkeyArray[64];
+
+	int width = (NUM_MONKIES / 2);
+
+	int i, j;
+	for (i = 0; i < NUM_MONKIES - 1; i++)
+	{
+		//for (j = 0; j < (NUM_MONKIES / 2) - 1; j++)
+		
+		monkeyTransform.position.z = i;
+		monkeyArray[i] = monkeyTransform;		
+	}
+
 
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 
+		// math
 		float time = (float)glfwGetTime();
 		deltaTime = time - prevFrameTime;
 		prevFrameTime = time;
 
-		//RENDER
-		glClearColor(0.6f,0.8f,0.92f,1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		monkeyTransform.rotation = glm::rotate(monkeyTransform.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
-
+		for (i = 0; i < NUM_MONKIES - 1; i++)
+		{
+			monkeyArray[i].rotation = glm::rotate(monkeyArray[i].rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+		}
+		
 		cameraController.move(window, &camera, deltaTime);
 
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, chipTexture);
+		//Geometry pass----------------------------------------------------------
 
-		//Geometry pass:
-
+		glEnable(GL_DEPTH_TEST);
+	
 		glBindFramebuffer(GL_FRAMEBUFFER, g_buffer.fbo);
 
 		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//drawScene(gBufferShader);
+
+		glBindTextureUnit(0, chipTexture);
 
 		geometryPassShader.use();
-
-
-		geometryPassShader.setMat4("_Model", monkeyTransform.modelMatrix());
+		
 		geometryPassShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
+		geometryPassShader.setInt("_MainTex", 0);
 
-		/*shader.setFloat("_Material.Ka", material.Ka);
-		shader.setFloat("_Material.Kd", material.Kd);
-		shader.setFloat("_Material.Ks", material.Ks);
-		shader.setFloat("_Material.Shininess", material.Shininess);*/
 
-		monkeyModel.draw();
+		for (i = 0; i < NUM_MONKIES - 1; i++)
+		{
+			geometryPassShader.setMat4("_Model", monkeyArray[i].modelMatrix());
+			monkeyModel.draw();
+		}
+
+		glBindTextureUnit(0, brickTexture);
+
+		geometryPassShader.setMat4("_Model", planeTransform.modelMatrix());
+		plane.draw();
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+		//Lighting pass------------------------------------------------------
+
+		glDisable(GL_DEPTH_TEST);
+
+		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		glBindVertexArray(screenVAO);
+
+		glBindTextureUnit(0, g_buffer.world_position);
+		glBindTextureUnit(1, g_buffer.world_normal);
+		glBindTextureUnit(2, g_buffer.albeto);
+
+		displayShader.use();
+
+		displayShader.setInt("gPosition", 0);
+		displayShader.setInt("gNormal", 1);
+		displayShader.setInt("gAlbedo", 2);
+
+		displayShader.setFloat("_Material.Ka", material.Ka);
+		displayShader.setFloat("_Material.Kd", material.Kd);
+		displayShader.setFloat("_Material.Ks", material.Ks);
+		displayShader.setFloat("_Material.Shininess", material.Shininess);
+
+		displayShader.setVec3("_EyePos", camera.position);
+
+
+		//draws the post processing quad
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		glBindVertexArray(0);
+
+		 
+		
+		//-----------------
+
+		
 
 		drawUI();
 
@@ -242,6 +348,8 @@ void drawUI() {
 	ImGui::NewFrame();
 
 	ImGui::Begin("Settings");
+
+	ImGui::Text("%.1fms %.0fFPS | AVG: %.2fms %.1fFPS", ImGui::GetIO().DeltaTime * 1000, 1.0f / ImGui::GetIO().DeltaTime, 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
 	if (ImGui::CollapsingHeader("Material"))
 	{
@@ -260,6 +368,22 @@ void drawUI() {
 	ImGui::End();
 
 	ImVec2 windowSize;
+	ImVec2 texSize = ImVec2(300, 300);
+
+	ImGui::Begin("Gbuffer");
+
+	ImGui::Image((ImTextureID)g_buffer.world_position, texSize, ImVec2(0, 1), ImVec2(1, 0));
+
+	ImGui::Image((ImTextureID)g_buffer.albeto, texSize, ImVec2(0, 1), ImVec2(1, 0));
+
+	ImGui::Image((ImTextureID)g_buffer.world_normal, texSize, ImVec2(0, 1), ImVec2(1, 0));
+
+	ImGui::Image((ImTextureID)g_buffer.depth, texSize, ImVec2(0, 1), ImVec2(1, 0));
+
+
+	ImGui::End();
+
+	
 
 	//ImGui::Begin("FBO");
 	////Stretch image to be window size
@@ -270,37 +394,39 @@ void drawUI() {
 	//ImGui::End();
 
 
-	ImGui::Begin("albeto");
-	//Stretch image to be window size
-	windowSize = ImGui::GetWindowSize();
-	//Invert 0-1 V to flip vertically for ImGui display
-	//shadowMap is the texture2D handle
-	ImGui::Image((ImTextureID)g_buffer.albeto, windowSize, ImVec2(0, 1), ImVec2(1, 0));
-	ImGui::End();
+	//ImGui::Begin("albeto");
+	////Stretch image to be window size
+	//windowSize = ImGui::GetWindowSize();
+	////Invert 0-1 V to flip vertically for ImGui display
+	////shadowMap is the texture2D handle
+	//ImGui::Image((ImTextureID)g_buffer.albeto, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	//ImGui::End();
 
-	ImGui::Begin("depth");
-	//Stretch image to be window size
-	windowSize = ImGui::GetWindowSize();
-	//Invert 0-1 V to flip vertically for ImGui display
-	//shadowMap is the texture2D handle
-	ImGui::Image((ImTextureID)g_buffer.depth, windowSize, ImVec2(0, 1), ImVec2(1, 0));
-	ImGui::End();
+	//ImGui::Begin("depth");
+	////Stretch image to be window size
+	//windowSize = ImGui::GetWindowSize();
+	////Invert 0-1 V to flip vertically for ImGui display
+	////shadowMap is the texture2D handle
+	//ImGui::Image((ImTextureID)g_buffer.depth, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	//ImGui::End();
 
-	ImGui::Begin("world_normal");
-	//Stretch image to be window size
-	windowSize = ImGui::GetWindowSize();
-	//Invert 0-1 V to flip vertically for ImGui display
-	//shadowMap is the texture2D handle
-	ImGui::Image((ImTextureID)g_buffer.world_normal, windowSize, ImVec2(0, 1), ImVec2(1, 0));
-	ImGui::End();
+	//ImGui::Begin("world_normal");
+	////Stretch image to be window size
+	//windowSize = ImGui::GetWindowSize();
+	////Invert 0-1 V to flip vertically for ImGui display
+	////shadowMap is the texture2D handle
+	//ImGui::Image((ImTextureID)g_buffer.world_normal, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	//ImGui::End();
 
-	ImGui::Begin("world_position");
-	//Stretch image to be window size
-	windowSize = ImGui::GetWindowSize();
-	//Invert 0-1 V to flip vertically for ImGui display
-	//shadowMap is the texture2D handle
-	ImGui::Image((ImTextureID)g_buffer.world_position, windowSize, ImVec2(0, 1), ImVec2(1, 0));
-	ImGui::End();
+	//ImGui::Begin("world_position");
+	////Stretch image to be window size
+	//windowSize = ImGui::GetWindowSize();
+	////Invert 0-1 V to flip vertically for ImGui display
+	////shadowMap is the texture2D handle
+	//ImGui::Image((ImTextureID)g_buffer.world_position, windowSize, ImVec2(0, 1), ImVec2(1, 0));
+	//ImGui::End();
+
+	
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
