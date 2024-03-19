@@ -47,9 +47,8 @@ float attenuateExponential(float dist, float radius)
 }
 
 
-vec3 calculatePointLight(PointLight light, vec3 position, vec3 normal, vec3 albedo)
+vec3 calculatePointLight(PointLight light, vec3 position, vec3 normal)
 {
-	
 
 	vec3 diff = light.position - position;
 	vec3 toLight = normalize(diff);
@@ -58,14 +57,13 @@ vec3 calculatePointLight(PointLight light, vec3 position, vec3 normal, vec3 albe
 	vec3 h = normalize(toLight + toEye);
 	float specularFactor = pow(max(dot(normal, h), 0.0), _Material.Shininess);
 
-	vec3 lighting = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
-	vec4 lightColor = (diffuseFactor + specularFactor) * light.color; //NOTE: may need to change to a vec3 instead of a vec4
+	//vec3 lighting = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
+	vec3 lightColor = (diffuseFactor + specularFactor) * light.color.rgb; 
 
 	float d = length(diff);
-
-	lighting *= attenuateLinear(d, light.radius);
-
-	return lighting;
+	lightColor *= attenuateExponential(d, light.radius);
+	
+	return lightColor;
 
 }
 
@@ -95,12 +93,14 @@ void main()
 	vec3 Normal = texture(gNormal, texCoords).rgb;
 	vec3 Albedo = texture(gAlbedo, texCoords).rgb;
 
-	vec3 lighting = calculateLighting(FragPos, Normal, Albedo);
+	vec3 lighting = vec3(0);
+	
+	lighting += calculateLighting(FragPos, Normal, Albedo);
 
 	int i;
 	for(i = 0; i < MAX_POINT_LIGHTS; i++)
 	{
-		lighting += calculatePointLight(_PointLights[i], FragPos, Normal, Albedo); 
+		lighting += calculatePointLight(_PointLights[i], FragPos, Normal); 
 	}
 
 	FragColor = vec4(Albedo * lighting, 1.0);

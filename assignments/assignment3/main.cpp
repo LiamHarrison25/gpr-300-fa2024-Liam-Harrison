@@ -10,6 +10,7 @@
 #include <ew/texture.h>
 #include <iostream>
 #include <ew/procGen.h>
+#include <cstdlib>
 
 #include <GLFW/glfw3.h>
 #include <imgui.h>
@@ -190,6 +191,17 @@ void create_pass()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+
+glm::vec4 RandomColor()
+{
+	float red = rand() % 1;
+	float blue = rand() % 1;
+	float green = rand() % 1;
+	float alpha = 1;
+
+	return glm::vec4(red, green, blue, alpha);
+}
+
 void createQuad()
 {
 	
@@ -254,7 +266,11 @@ int main() {
 		//for (j = 0; j < (NUM_MONKIES / 2) - 1; j++)
 		
 		monkeyTransform.position.z = i;
-		monkeyArray[i] = monkeyTransform;		
+		monkeyArray[i] = monkeyTransform;	
+		pointLights[i].position.z = i;
+		pointLights[i].position.y = 2;
+		pointLights[i].color = RandomColor();
+		pointLights[i].radius = 1.0f;
 	}
 
 
@@ -335,17 +351,17 @@ int main() {
 		//set shader light uniforms
 		for (i = 0; i < MAX_POINT_LIGHTS; i++)
 		{
-			std::string prefix = "_PointLights[" + std::to_string(i) + "]";
+			std::string prefix = "_PointLights[" +std::to_string(i) + "].";
+			displayShader.setVec3(prefix + "position", pointLights[i].position);
+			displayShader.setFloat(prefix + "radius", pointLights[i].radius);
 			displayShader.setVec3(prefix + "color", pointLights[i].color);
 		}
-
 
 		//draws the post processing quad
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 
 		 
-		
 		//-----------------
 
 		
