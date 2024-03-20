@@ -79,7 +79,6 @@ int main() {
 
 		cameraController.move(window, &camera, deltaTime);
 
-
 		islandShader.use();
 
 		//change the texture
