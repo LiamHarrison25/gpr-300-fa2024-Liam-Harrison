@@ -99,6 +99,7 @@ const int NUM_MONKIES = 64;
 G_Buffer g_buffer;
 
 
+
 void create_pass()
 {
 	//G_Buffer g_buffer;
@@ -121,11 +122,17 @@ void create_pass()
 
 	//Create frame buffers
 
+	//second fbo:
+
+	glCreateFramebuffers(0, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 
 	//fbo:
 
 	glCreateFramebuffers(1, &g_buffer.fbo); //create the frame buffer
 	glBindFramebuffer(GL_FRAMEBUFFER, g_buffer.fbo);
+
+	
 
 
 	//world_position:
@@ -194,9 +201,9 @@ void create_pass()
 
 glm::vec4 RandomColor()
 {
-	float red = rand() % 1;
-	float blue = rand() % 1;
-	float green = rand() % 1;
+	float red = (rand() % 100 + 1) / 100.0f;
+	float blue = (rand() % 100 + 1) / 100.0f;
+	float green = (rand() % 100 + 1) / 100.0f;
 	float alpha = 1;
 
 	return glm::vec4(red, green, blue, alpha);
@@ -227,6 +234,8 @@ void createQuad()
 	//-------------------------
 }
 
+
+
 int main() {
 	GLFWwindow* window = initWindow("Assignment 0", screenWidth, screenHeight);
 	glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
@@ -237,6 +246,7 @@ int main() {
 	ew::Shader shader = ew::Shader("assets/lit.vert", "assets/lit.frag");
 	ew::Shader geometryPassShader = ew::Shader("assets/geometryPass.vert", "assets/geometryPass.frag");
 	ew::Shader displayShader = ew::Shader("assets/lightingPass.vert", "assets/lightingPass.frag");
+	ew::Shader lightOrbShader = ew::Shader("assets/lightOrb.vert", "assets/lightOrb.frag");
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
 	ew::Transform monkeyTransform;
 
@@ -258,19 +268,27 @@ int main() {
 
 	ew::Transform monkeyArray[64];
 
-	int width = (NUM_MONKIES / 2);
+	ew::Mesh sphereMesh = ew::Mesh(ew::createSphere(1.0f, 8));
+
+	int width = 8;
+	int spacing = 5;
 
 	int i, j;
-	for (i = 0; i < NUM_MONKIES - 1; i++)
+	
+	for (i = 0; i < width; i++)
 	{
-		//for (j = 0; j < (NUM_MONKIES / 2) - 1; j++)
-		
-		monkeyTransform.position.z = i;
-		monkeyArray[i] = monkeyTransform;	
-		pointLights[i].position.z = i;
-		pointLights[i].position.y = 2;
-		pointLights[i].color = RandomColor();
-		pointLights[i].radius = 1.0f;
+		for (j = 0; j < width; j++)
+		{
+			int index = j * width + i;
+			monkeyTransform.position.z = i * spacing;
+			monkeyTransform.position.x = j * spacing;
+			monkeyArray[index] = monkeyTransform;
+			pointLights[index].position.z = i * spacing;
+			pointLights[index].position.x = j * spacing;
+			pointLights[index].position.y = 3;
+			pointLights[index].color = RandomColor();
+			pointLights[index].radius = 3.0f;
+		}
 	}
 
 
@@ -290,10 +308,11 @@ int main() {
 		
 		cameraController.move(window, &camera, deltaTime);
 
-		//Geometry pass----------------------------------------------------------
+		//Geometry pass-----------------------------------------------------------------
+		#pragma region GeometryPass
 
 		glEnable(GL_DEPTH_TEST);
-	
+
 		glBindFramebuffer(GL_FRAMEBUFFER, g_buffer.fbo);
 
 		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
@@ -303,7 +322,7 @@ int main() {
 		glBindTextureUnit(0, chipTexture);
 
 		geometryPassShader.use();
-		
+
 		geometryPassShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		geometryPassShader.setInt("_MainTex", 0);
 
@@ -321,8 +340,10 @@ int main() {
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+		#pragma endregion
 
-		//Lighting pass------------------------------------------------------
+		//Lighting pass-----------------------------------------------------------------
+		#pragma region LightingPass
 
 		glDisable(GL_DEPTH_TEST);
 
@@ -351,19 +372,54 @@ int main() {
 		//set shader light uniforms
 		for (i = 0; i < MAX_POINT_LIGHTS; i++)
 		{
-			std::string prefix = "_PointLights[" +std::to_string(i) + "].";
-			displayShader.setVec3(prefix + "position", pointLights[i].position);
-			displayShader.setFloat(prefix + "radius", pointLights[i].radius);
-			displayShader.setVec3(prefix + "color", pointLights[i].color);
+			for (j = 0; j < MAX_POINT_LIGHTS; j++)
+			{
+				int index = j * width + i;
+				std::string prefix = "_PointLights[" + std::to_string(index) + "].";
+				displayShader.setVec3(prefix + "position", pointLights[index].position);
+				displayShader.setFloat(prefix + "radius", pointLights[index].radius);
+				displayShader.setVec3(prefix + "color", pointLights[index].color);
+			}
+
 		}
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		#pragma endregion
 
 		//draws the post processing quad
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 		glBindVertexArray(0);
 
-		 
-		//-----------------
+		//Render light spheres: --------------------------------------------------------
+		#pragma region LightSpheres
 
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, g_buffer.fbo);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo); //write to current fbo
+
+		glBlitFramebuffer(0, 0, screenWidth, screenHeight, 0, 0, screenWidth, screenHeight, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+		//Draw the light orbs
+
+		lightOrbShader.use();
+		
+		lightOrbShader.setMat4("_ViewProjection", camera.projectionMatrix()* camera.viewMatrix());
+
+		float lightScaleRadius = 0.2f;
+
+		for (i = 0; i < MAX_POINT_LIGHTS; i++)
+		{
+			glm::mat4 m = glm::mat4(1.0f);
+			m = glm::translate(m, pointLights[i].position);
+			m = glm::scale(m, glm::vec3(lightScaleRadius));
+
+			lightOrbShader.setMat4("_Model", m);
+			lightOrbShader.setVec3("_Color", pointLights[i].color);
+			sphereMesh.draw();
+		}
+
+		#pragma endregion
+		//-----------------
 		
 
 		drawUI();

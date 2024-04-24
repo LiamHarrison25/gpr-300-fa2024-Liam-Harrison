@@ -17,6 +17,6 @@ void main()
 
 	glWorldNormal = normalize(WorldNormal);
 
-	glAlbeto = texture(_MainText, UV).rgb;
+	glAlbeto = texture(_MainText, UV).rgb; //glWorldNormal * 0.5;
 
 }
