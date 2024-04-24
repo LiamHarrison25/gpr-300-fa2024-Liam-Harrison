@@ -1,16 +1,23 @@
 #version 450
 
-in vec2 texCoords;
+
+//new material and lighting uniforms:
+
+uniform layout(binding = 0) sampler2D gPositions;
+uniform layout(binding = 1) sampler2D gNormals;
+uniform layout(binding = 2) sampler2D gAlbedo;
+
+//---------------------
+
+
 out vec4 FragColor;
+in vec2 texCoords;
 
-uniform layout (location = 0) sampler2D gPosition;
-uniform layout(location = 1) sampler2D gNormal;
-uniform layout (location = 2) sampler2D gAlbedo;
-
+uniform sampler2D _MainTex;
 uniform vec3 _EyePos;
-vec3 _LightDirection = vec3(0.0, -1.0, 0.0);
-vec3 _LightColor = vec3(1.0);
-vec3 _AmbientColor = vec3(0.3, 0.4, 0.46);
+uniform vec3 _LightDirection = vec3(0.0, -1.0, 0.0);
+uniform vec3 _LightColor = vec3(1.0);
+uniform vec3 _AmbientColor = vec3(0.3, 0.4, 0.46);
 
 struct Material
 {
@@ -30,78 +37,64 @@ struct PointLight
 #define MAX_POINT_LIGHTS 64
 uniform PointLight _PointLights[MAX_POINT_LIGHTS];
 
-//cheaper but less accurate
-float attenuateLinear(float dist, float radius)
-{
-	return clamp((radius - dist) / radius, 0.0, 1.0);
 
+float attenuateLinear(float distance, float radius)
+{
+	return clamp((radius - distance) / radius, 0.0, 1.0);
 }
 
-//more accurate but more expensive
-float attenuateExponential(float dist, float radius)
+vec3 CalculateDirectionalLight(vec3 normal, vec3 toEye)
 {
-	float i = clamp(1.0 - pow(dist / radius, 4.0), 0.0, 1.0);
-
-	return i * i;
-
-}
-
-
-vec3 calculatePointLight(PointLight light, vec3 position, vec3 normal)
-{
-
-	vec3 diff = light.position - position;
-	vec3 toLight = normalize(diff);
-	float diffuseFactor = max(dot(normal, toLight), 0.0);
-	vec3 toEye = normalize(_EyePos - position);
-	vec3 h = normalize(toLight + toEye);
-	float specularFactor = pow(max(dot(normal, h), 0.0), _Material.Shininess);
-
-	//vec3 lighting = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
-	vec3 lightColor = (diffuseFactor + specularFactor) * light.color.rgb; 
-
-	float d = length(diff);
-	lightColor *= attenuateExponential(d, light.radius);
-	
-	return lightColor;
-
-}
-
-vec3 calculateLighting(vec3 position, vec3 normal, vec3 albedo)
-{
-
+	//vec3 normal = normalize(fs_in.WorldNormal);
 	vec3 toLight = -_LightDirection;
 	float diffuseFactor = max(dot(normal, toLight), 0.0);
-	vec3 toEye = normalize(_EyePos - position);
+
+	//vec3 toEye = normalize(_EyePos - fs_in.WorldPos);
 	vec3 h = normalize(toLight + toEye);
 	float specularFactor = pow(max(dot(normal, h), 0.0), _Material.Shininess);
 
-	vec3 lighting = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
-	lighting += _AmbientColor * _Material.Ka;
+	vec3 lightColor = (_Material.Kd * diffuseFactor + _Material.Ks * specularFactor) * _LightColor;
 
-	//vec3 lightDir = normalize(_LightDirection - position);
-	//vec3 diffuse = max(dot(normal, lightDir), 0.0) * albedo * _LightColor;
+	//vec3 diffuseColor = _LightColor * diffuseFactor;
+	lightColor += _AmbientColor * _Material.Ka;
+	//vec3 objectColor = texture(_MainTex, fs_in.TexCoord).rgb;
+	return lightColor;
+}
 
-	//lighting += diffuse;
+vec3 CalculatePointLight(PointLight light, vec3 normal, vec3 pos)
+{
+	vec3 diff = light.position - pos;
+	vec3 toLight = normalize(diff);
 
-	return lighting * albedo; 
+	float diffuseFactor = max(dot(normal, toLight), 0.0);
+
+	//vec3 toEye = normalize(_EyePos - fs_in.WorldPos);
+	vec3 h = normalize(toLight + light.position);
+	float specularFactor = pow(max(dot(normal, h), 0.0), _Material.Shininess);
+
+	vec3 lightColor = (diffuseFactor + specularFactor) * light.color.rgb;
+
+	float d = length(diff);
+	lightColor*=attenuateLinear(d, light.radius);
+
+	return lightColor;
 }
 
 void main()
 {
-	vec3 FragPos = texture(gPosition, texCoords).rgb;
-	vec3 Normal = texture(gNormal, texCoords).rgb;
-	vec3 Albedo = texture(gAlbedo, texCoords).rgb;
+	vec3 normal = texture(gNormals, texCoords).xyz;
+	vec3 pos = texture(gPositions, texCoords).xyz;
+	vec3 albedo = texture(gAlbedo, texCoords).xyz;
 
-	vec3 lighting = vec3(0);
-	
-	lighting += calculateLighting(FragPos, Normal, Albedo);
+	vec3 totalLight = vec3(0);
+
+	totalLight += CalculateDirectionalLight(normal, pos);
 
 	int i;
 	for(i = 0; i < MAX_POINT_LIGHTS; i++)
 	{
-		lighting += calculatePointLight(_PointLights[i], FragPos, Normal); 
+		totalLight += CalculatePointLight(_PointLights[i], normal, pos);
 	}
-
-	FragColor = vec4(Albedo * lighting, 1.0);
+	
+	FragColor = vec4(albedo * totalLight, 1.0);
 }

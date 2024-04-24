@@ -287,7 +287,7 @@ int main() {
 			pointLights[index].position.x = j * spacing;
 			pointLights[index].position.y = 3;
 			pointLights[index].color = RandomColor();
-			pointLights[index].radius = 3.0f;
+			pointLights[index].radius = 5.0f;
 		}
 	}
 
@@ -345,12 +345,14 @@ int main() {
 		//Lighting pass-----------------------------------------------------------------
 		#pragma region LightingPass
 
-		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_DEPTH_TEST);
+
+
+
+		glBindVertexArray(screenVAO);
 
 		glClearColor(0.6f, 0.8f, 0.92f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glBindVertexArray(screenVAO);
 
 		glBindTextureUnit(0, g_buffer.world_position);
 		glBindTextureUnit(1, g_buffer.world_normal);
@@ -358,7 +360,11 @@ int main() {
 
 		displayShader.use();
 
-		displayShader.setInt("gPosition", 0);
+
+
+
+		//NOTE: OLD
+		/*displayShader.setInt("gPosition", 0);
 		displayShader.setInt("gNormal", 1);
 		displayShader.setInt("gAlbedo", 2);
 
@@ -367,23 +373,40 @@ int main() {
 		displayShader.setFloat("_Material.Ks", material.Ks);
 		displayShader.setFloat("_Material.Shininess", material.Shininess);
 
+		displayShader.setVec3("_EyePos", camera.position);*/
+
+
+		//NEW: ----------------------
+
+		displayShader.setInt("_MainTex", 0);
+
+		displayShader.setInt("gPosition", 0);
+		displayShader.setInt("gNormal", 1);
+		displayShader.setInt("gAlbedo", 2);
+
+		displayShader.setMat4("_Model", monkeyTransform.modelMatrix());
+		displayShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		displayShader.setVec3("_EyePos", camera.position);
+
+		displayShader.setFloat("_Material.Ka", material.Ka);
+		displayShader.setFloat("_Material.Kd", material.Kd);
+		displayShader.setFloat("_Material.Ks", material.Ks);
+		displayShader.setFloat("_Material.Shininess", material.Shininess);
+
+		
+
+		//--------------------------------
 
 		//set shader light uniforms
 		for (i = 0; i < MAX_POINT_LIGHTS; i++)
 		{
-			for (j = 0; j < MAX_POINT_LIGHTS; j++)
-			{
-				int index = j * width + i;
-				std::string prefix = "_PointLights[" + std::to_string(index) + "].";
-				displayShader.setVec3(prefix + "position", pointLights[index].position);
-				displayShader.setFloat(prefix + "radius", pointLights[index].radius);
-				displayShader.setVec3(prefix + "color", pointLights[index].color);
-			}
-
+				std::string prefix = "_PointLights[" + std::to_string(i) + "].";
+				displayShader.setVec3(prefix + "position", pointLights[i].position);
+				displayShader.setFloat(prefix + "radius", pointLights[i].radius);
+				displayShader.setVec4(prefix + "color", pointLights[i].color);
 		}
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		
 
 		#pragma endregion
 
