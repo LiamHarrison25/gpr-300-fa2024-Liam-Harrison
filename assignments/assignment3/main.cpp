@@ -252,7 +252,7 @@ int main() {
 
 	ew::Mesh plane = ew::createPlane(1024, 1024, 1028);
 	ew::Transform planeTransform;
-	planeTransform.position.y = -8.0;
+	planeTransform.position.y = -1;
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -282,6 +282,7 @@ int main() {
 			int index = j * width + i;
 			monkeyTransform.position.z = i * spacing;
 			monkeyTransform.position.x = j * spacing;
+			monkeyTransform.position.y = 1;
 			monkeyArray[index] = monkeyTransform;
 			pointLights[index].position.z = i * spacing;
 			pointLights[index].position.x = j * spacing;
