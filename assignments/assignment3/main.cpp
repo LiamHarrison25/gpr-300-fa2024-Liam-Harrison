@@ -250,9 +250,11 @@ int main() {
 	ew::Model monkeyModel = ew::Model("assets/suzanne.obj");
 	ew::Transform monkeyTransform;
 
-	ew::Mesh plane = ew::createPlane(1024, 1024, 1028);
+	ew::Mesh plane = ew::createPlane(40, 40, 40);
 	ew::Transform planeTransform;
 	planeTransform.position.y = -1;
+	planeTransform.position.x += 17;
+	planeTransform.position.z += 17;
 
 	camera.position = glm::vec3(0.0f, 0.0f, 5.0f);
 	camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -288,7 +290,7 @@ int main() {
 			pointLights[index].position.x = j * spacing;
 			pointLights[index].position.y = 3;
 			pointLights[index].color = RandomColor();
-			pointLights[index].radius = 5.0f;
+			pointLights[index].radius = 7.0f;
 		}
 	}
 
