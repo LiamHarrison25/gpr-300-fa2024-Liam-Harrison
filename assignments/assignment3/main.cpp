@@ -268,7 +268,7 @@ int main() {
 	create_pass();
 	createQuad();
 
-	ew::Transform monkeyArray[64];
+	ew::Transform monkeyArray[NUM_MONKIES];
 
 	ew::Mesh sphereMesh = ew::Mesh(ew::createSphere(1.0f, 8));
 
@@ -304,10 +304,15 @@ int main() {
 		prevFrameTime = time;
 
 
-		for (i = 0; i < NUM_MONKIES - 1; i++)
+		for (i = 0; i < NUM_MONKIES; i++)
 		{
 			monkeyArray[i].rotation = glm::rotate(monkeyArray[i].rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
 		}
+
+		/*for (auto monkey : monkeyArray)
+		{
+			monkey.rotation = glm::rotate(monkey.rotation, deltaTime, glm::vec3(0.0, 1.0, 0.0));
+		}*/
 		
 		cameraController.move(window, &camera, deltaTime);
 
@@ -330,9 +335,15 @@ int main() {
 		geometryPassShader.setInt("_MainTex", 0);
 
 
-		for (i = 0; i < NUM_MONKIES - 1; i++)
+		/*for (i = 0; i < NUM_MONKIES - 1; i++)
 		{
 			geometryPassShader.setMat4("_Model", monkeyArray[i].modelMatrix());
+			monkeyModel.draw();
+		}*/
+
+		for (auto monkey : monkeyArray)
+		{
+			geometryPassShader.setMat4("_Model", monkey.modelMatrix());
 			monkeyModel.draw();
 		}
 
@@ -390,6 +401,7 @@ int main() {
 		displayShader.setMat4("_Model", monkeyTransform.modelMatrix());
 		displayShader.setMat4("_ViewProjection", camera.projectionMatrix() * camera.viewMatrix());
 		displayShader.setVec3("_EyePos", camera.position);
+		displayShader.setVec3("_LightColor", glm::vec3(0.6f, 0.8f, 0.92f));
 
 		displayShader.setFloat("_Material.Ka", material.Ka);
 		displayShader.setFloat("_Material.Kd", material.Kd);
